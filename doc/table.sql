@@ -53,7 +53,7 @@ CREATE TABLE `tbl_user_file` (
   `last_update` datetime DEFAULT CURRENT_TIMESTAMP 
           ON UPDATE CURRENT_TIMESTAMP COMMENT '最后修改时间',
   `status` int(11) NOT NULL DEFAULT '0' COMMENT '文件状态(0正常1已删除2禁用)',
-  UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
+  -- UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
   KEY `idx_status` (`status`),
   KEY `idx_user_id` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
