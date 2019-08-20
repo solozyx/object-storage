@@ -118,14 +118,10 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 					DestLocation:  ossPath,
 					DestStoreType: cmn.StoreOSS,
 				}
-				pubData, _ := json.Marshal(data)
-				pubSuc := mq.Publish(
-					conf.TransExchangeName,
-					conf.TransOSSRoutingKey,
-					pubData,
-				)
-				if !pubSuc {
-					// TODO: 当前发送转移信息失败，稍后重试
+				publishData, _ := json.Marshal(data)
+				publishSucc := mq.Publish(conf.TransExchangeName,conf.TransOSSRoutingKey,publishData)
+				if !publishSucc {
+					// TODO : 当前发送转移信息失败 稍后重试
 				}
 			}
 		}
