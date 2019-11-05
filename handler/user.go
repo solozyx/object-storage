@@ -110,7 +110,7 @@ func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	// 验证token放到http请求拦截器
 	// 2. 验证token是否有效
 	token := r.Form.Get("token")
-	ok := IsTokenValid(token)
+	ok := isTokenValid(token)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -145,7 +145,7 @@ func genToken(username string) string {
 }
 
 // token是否有效
-func IsTokenValid(token string) bool {
+func isTokenValid(token string) bool {
 	if len(token) != 40 {
 		return false
 	}

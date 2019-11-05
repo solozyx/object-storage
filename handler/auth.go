@@ -20,7 +20,7 @@ func HTTPInterceptor(h http.HandlerFunc) http.HandlerFunc {
 			username := r.Form.Get("username")
 			token := r.Form.Get("token")
 			//验证登录token是否有效
-			if len(username) < 3 || !IsTokenValid(token) {
+			if len(username) < 3 || !isTokenValid(token) {
 				// w.WriteHeader(http.StatusForbidden)
 				// token校验失败则跳转到登录页面
 				http.Redirect(w, r, "./static/view/signin.html", http.StatusFound)
@@ -38,12 +38,11 @@ func Gin_HTTPInterceptor() gin.HandlerFunc {
 		username := ctx.Request.FormValue("username")
 		token := ctx.Request.FormValue("token")
 		//验证登录token是否有效
-		if len(username) < 3 || !IsTokenValid(token) {
+		if len(username) < 3 || !isTokenValid(token) {
 			// Abort方法通知后续方法不再执行 到这里请求链路完成
 			ctx.Abort()
 			// token校验失败 返回失败提示
-			resp := util.NewRespMsg(int(common.StatusTokenInvalid),
-				"Token Invalid", nil)
+			resp := util.NewRespMsg(int(common.StatusTokenInvalid), "Token Invalid", nil)
 			ctx.JSON(http.StatusOK, resp)
 			return
 		}
