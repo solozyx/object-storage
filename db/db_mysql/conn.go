@@ -1,4 +1,4 @@
-package mysql
+package db_mysql
 
 import (
 	// Go语言操作MySQL标准接口
@@ -14,13 +14,13 @@ import (
 	// 就可以使用 database/sql 提供的接口方法操作MySQL数据库
 	_ "github.com/go-sql-driver/mysql"
 
-	cfg "filestore-server/config"
+	conf "github.com/solozyx/object-storage/config"
 )
 
 var db *sql.DB
 
 func init() {
-	db, _ = sql.Open("mysql", cfg.MySQLSource)
+	db, _ = sql.Open("mysql", conf.MySQLSource)
 	// 最大同时活跃连接数
 	db.SetMaxOpenConns(1000)
 	// 连接测试

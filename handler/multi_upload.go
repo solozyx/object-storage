@@ -14,22 +14,27 @@ import (
 	_ "github.com/garyburd/redigo/redis"
 	"github.com/gomodule/redigo/redis"
 
-	rPool "filestore-server/cache/redis"
-	conf "filestore-server/config"
-	dblayer "filestore-server/db"
-	"filestore-server/util"
+	rPool "github.com/solozyx/object-storage/cache/redis"
+	conf "github.com/solozyx/object-storage/config"
+	"github.com/solozyx/object-storage/db"
+	"github.com/solozyx/object-storage/util"
 )
 
-const MPKeyPrefix = "MP_"
-const ChunkIndexPrefix = "chkidx_"
+const (
+	MPKeyPrefix      = "MP_"
+	ChunkCount       = "chunk_count"
+	FileHash         = "file_hash"
+	FileSize         = "file_size"
+	ChunkIndexPrefix = "chunk_index_"
+)
 
 // 大文件分块上传元信息
 type MultipartUploadInfo struct {
 	FileHash   string
 	FileSize   int
-	UploadID   string 	// 唯一标识某1次上传操作
-	ChunkSize  int	  	// 分块大小,最后1个分块要独立计算
-	ChunkCount int		// 分块数量
+	UploadID   string // 唯一标识某1次上传操作
+	ChunkSize  int    // 分块大小,最后1个分块要独立计算
+	ChunkCount int    // 分块数量
 }
 
 // 初始化分块上传
@@ -50,21 +55,21 @@ func InitialMultipartUploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 3. 生成分块上传的初始化元信息
 	upInfo := MultipartUploadInfo{
-		FileHash:   filehash,
-		FileSize:   filesize,
+		FileHash: filehash,
+		FileSize: filesize,
 		// TODO:NOTICE 自定义规则 [用户名+当前时间戳]
-		UploadID:   username + fmt.Sprintf("%x", time.Now().UnixNano()),
+		UploadID: username + fmt.Sprintf("%x", time.Now().UnixNano()),
 		// 每个分块大小 5MB
-		ChunkSize:  5 * 1024 * 1024,
+		ChunkSize: 5 * 1024 * 1024,
 		// 向上取整 math.Ceil()
 		ChunkCount: int(math.Ceil(float64(filesize) / (5 * 1024 * 1024))),
 	}
 
 	// 4. 将初始化信息写入到redis缓存
 	// TODO : NOTICE 使用 redis hash 这里可以使用 HMSET 一次性写入
-	rConn.Do("HSET", MPKeyPrefix+upInfo.UploadID, "chunkcount", upInfo.ChunkCount)
-	rConn.Do("HSET", MPKeyPrefix+upInfo.UploadID, "filehash", upInfo.FileHash)
-	rConn.Do("HSET", MPKeyPrefix +upInfo.UploadID, "filesize", upInfo.FileSize)
+	rConn.Do("HSET", MPKeyPrefix+upInfo.UploadID, ChunkCount, upInfo.ChunkCount)
+	rConn.Do("HSET", MPKeyPrefix+upInfo.UploadID, FileHash, upInfo.FileHash)
+	rConn.Do("HSET", MPKeyPrefix+upInfo.UploadID, FileSize, upInfo.FileSize)
 
 	// 5. 将响应初始化数据返回到客户端
 	w.Write(util.NewRespMsg(0, "OK", upInfo).JSONBytes())
@@ -125,7 +130,7 @@ func UploadPartHandler(w http.ResponseWriter, r *http.Request) {
 func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. 解析请求参数
 	r.ParseForm()
-	upid := r.Form.Get("uploadid")
+	uplodaId := r.Form.Get("uploadid")
 	username := r.Form.Get("username")
 	filehash := r.Form.Get("filehash")
 	filesize := r.Form.Get("filesize")
@@ -136,7 +141,7 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer rConn.Close()
 
 	// 3. 通过uploadid查询redis 并判断 是否所有分块上传完成
-	data, err := redis.Values(rConn.Do("HGETALL", MPKeyPrefix+upid))
+	datas, err := redis.Values(rConn.Do("HGETALL", MPKeyPrefix+uplodaId))
 	if err != nil {
 		w.Write(util.NewRespMsg(-1, "complete upload failed", nil).JSONBytes())
 		return
@@ -147,13 +152,13 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	chunkCount := 0
 	// TODO : NOTICE 通过 HGETALL 查询得到的结果 key value 在同1个数组中
 	//  在每次循环中要同时解出 kv
-	for i := 0; i < len(data); i += 2 {
-		k := string(data[i].([]byte))
-		v := string(data[i+1].([]byte))
-		if k == "chunkcount" {
+	for i := 0; i < len(datas); i += 2 {
+		k := string(datas[i].([]byte))
+		v := string(datas[i+1].([]byte))
+		if k == ChunkCount {
 			totalCount, _ = strconv.Atoi(v)
 		} else if strings.HasPrefix(k, ChunkIndexPrefix) && v == "1" {
-			// k 以 chkidx_ 开头 并且该分块上传完成 缓存值为 1
+			// k 以 chunk_index_ 开头 并且该分块上传完成 缓存值为 1
 			chunkCount++
 		}
 	}
@@ -168,8 +173,8 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 5. 更新唯一文件表及用户文件表
 	fsize, _ := strconv.Atoi(filesize)
 	// 合并分块没做 fileaddr 传空字符串
-	dblayer.OnFileUploadFinished(filehash, filename, int64(fsize), "")
-	dblayer.OnUserFileUploadFinished(username, filehash, filename, int64(fsize))
+	db.OnFileUploadFinished(filehash, filename, int64(fsize), "")
+	db.OnUserFileUploadFinished(username, filehash, filename, int64(fsize))
 
 	// 6. 响应处理结果
 	w.Write(util.NewRespMsg(0, "OK", nil).JSONBytes())

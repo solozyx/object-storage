@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"filestore-server/common"
-	"filestore-server/util"
+	"github.com/solozyx/object-storage/common"
+	"github.com/solozyx/object-storage/util"
 )
 
 // net/http 中间件
@@ -43,8 +43,8 @@ func Gin_HTTPInterceptor() gin.HandlerFunc {
 			ctx.Abort()
 			// token校验失败 返回失败提示
 			resp := util.NewRespMsg(int(common.StatusTokenInvalid),
-				"Token Invalid",nil)
-			ctx.JSON(http.StatusOK,resp)
+				"Token Invalid", nil)
+			ctx.JSON(http.StatusOK, resp)
 			return
 		}
 		// token验证通过,将当前请求继续转发其他中间件或业务handler执行

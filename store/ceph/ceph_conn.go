@@ -4,7 +4,7 @@ import (
 	"gopkg.in/amz.v1/aws"
 	"gopkg.in/amz.v1/s3"
 
-	conf "filestore-server/config"
+	conf "github.com/solozyx/object-storage/config"
 )
 
 var cephConn *s3.S3
@@ -23,19 +23,19 @@ func GetCephConnection() *s3.S3 {
 	// 2. 创建S3类型连接
 	// 设置Region地区
 	curRegion := aws.Region{
-		Name:                 "default",
+		Name: "default",
 		// ceph集群 radosgw 网关服务地址
-		EC2Endpoint:          conf.CephGWEndpoint,
+		EC2Endpoint: conf.CephGWEndpoint,
 		// ceph集群 radosgw 网关服务地址
-		S3Endpoint:           conf.CephGWEndpoint,
+		S3Endpoint: conf.CephGWEndpoint,
 		// 不用指定
-		S3BucketEndpoint:     "",
+		S3BucketEndpoint: "",
 		// 这里不需要做区域限制
 		S3LocationConstraint: false,
 		// false表示 创建的bucket允许大小写
-		S3LowercaseBucket:    false,
+		S3LowercaseBucket: false,
 		// 签名算法
-		Sign:                 aws.SignV2,
+		Sign: aws.SignV2,
 	}
 	return s3.New(auth, curRegion)
 }

@@ -1,3 +1,6 @@
+-- 创建数据库
+CREATE DATABASE `object_storage` DEFAULT CHARSET utf8;
+
 -- 创建文件表
 CREATE TABLE `tbl_file` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -30,30 +33,31 @@ CREATE TABLE `tbl_user` (
   `status` int(11) NOT NULL DEFAULT '0' COMMENT '账户状态(启用/禁用/锁定/标记删除等)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_username` (`user_name`),
+  UNIQUE KEY `idx_phone` (`phone`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 -- 创建用户token表
 CREATE TABLE `tbl_user_token` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_name` varchar(64) NOT NULL DEFAULT '' COMMENT '用户名',
   `user_token` char(40) NOT NULL DEFAULT '' COMMENT '用户登录token',
-    PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`),
   UNIQUE KEY `idx_username` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 创建用户文件表
+-- UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
 CREATE TABLE `tbl_user_file` (
-  `id` int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_name` varchar(64) NOT NULL,
   `file_sha1` varchar(64) NOT NULL DEFAULT '' COMMENT '文件hash',
   `file_size` bigint(20) DEFAULT '0' COMMENT '文件大小',
   `file_name` varchar(256) NOT NULL DEFAULT '' COMMENT '文件名',
   `upload_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
-  `last_update` datetime DEFAULT CURRENT_TIMESTAMP 
-          ON UPDATE CURRENT_TIMESTAMP COMMENT '最后修改时间',
+  `last_update` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后修改时间',
   `status` int(11) NOT NULL DEFAULT '0' COMMENT '文件状态(0正常1已删除2禁用)',
-  -- UNIQUE KEY `idx_user_file` (`user_name`, `file_sha1`),
+  PRIMARY KEY (`id`),
   KEY `idx_status` (`status`),
-  KEY `idx_user_id` (`user_name`)
+  KEY `idx_username` (`user_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

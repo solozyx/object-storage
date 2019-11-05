@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	mydb "filestore-server/db/mysql"
+	"github.com/solozyx/object-storage/db/db_mysql"
 )
 
 // TableFile : 文件表 tbl_file 结构体
@@ -16,13 +16,10 @@ type TableFile struct {
 	FileAddr sql.NullString
 }
 
-// OnFileUploadFinished : 文件上传完成 保存meta
-func OnFileUploadFinished(filehash string, filename string,	filesize int64, fileaddr string) bool {
+// 文件上传完成 保存meta
+func OnFileUploadFinished(filehash string, filename string, filesize int64, fileaddr string) bool {
 	// TODO : NOTICE 预编译语句,防止SQL注入攻击,外部用户写恶意SQL语句,经过逻辑处理嵌入到,DELETE DROP
-	stmt, err := mydb.DBConn().Prepare(
-		`insert ignore into tbl_file 
-				(file_sha1,file_name,file_size,file_addr,status)
-				values (?,?,?,?,1)`)
+	stmt, err := db_mysql.DBConn().Prepare(`insert ignore into tbl_file (file_sha1,file_name,file_size,file_addr,status) values (?,?,?,?,1)`)
 	if err != nil {
 		fmt.Println("Failed to prepare statement, err:" + err.Error())
 		return false
@@ -45,14 +42,11 @@ func OnFileUploadFinished(filehash string, filename string,	filesize int64, file
 	return false
 }
 
-// GetFileMeta : 从mysql获取文件元信息
+// 从mysql获取文件元信息
 func GetFileMeta(filehash string) (*TableFile, error) {
 	// status=1 表示文件存在没被删除
-	stmt, err := mydb.DBConn().Prepare(
-		`select file_sha1,file_addr,file_name,file_size 
-				from tbl_file
-				where file_sha1=? and status=1 
-				limit 1`)
+	stmt, err := db_mysql.DBConn().Prepare(`select file_sha1,file_addr,file_name,file_size from tbl_file 
+				where file_sha1=? and status=1 limit 1`)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, err
@@ -61,8 +55,7 @@ func GetFileMeta(filehash string) (*TableFile, error) {
 
 	tfile := TableFile{}
 	// 返回当前记录 Scan赋值 字段顺序和SQL语句字段顺序必须相同
-	err = stmt.QueryRow(filehash).
-		Scan(&tfile.FileHash, &tfile.FileAddr, &tfile.FileName, &tfile.FileSize)
+	err = stmt.QueryRow(filehash).Scan(&tfile.FileHash, &tfile.FileAddr, &tfile.FileName, &tfile.FileSize)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// 查不到对应记录 返回参数及错误均为nil
@@ -75,13 +68,9 @@ func GetFileMeta(filehash string) (*TableFile, error) {
 	return &tfile, nil
 }
 
-// GetFileMetaList : 从mysql批量获取文件元信息
+// 从mysql批量获取文件元信息
 func GetFileMetaList(limit int) ([]TableFile, error) {
-	stmt, err := mydb.DBConn().Prepare(
-		`select file_sha1,file_addr,file_name,file_size 
-				from tbl_file  
-				where status=1 
-				limit ?`)
+	stmt, err := db_mysql.DBConn().Prepare(`select file_sha1,file_addr,file_name,file_size from tbl_file where status=1 limit ?`)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, err
@@ -99,8 +88,7 @@ func GetFileMetaList(limit int) ([]TableFile, error) {
 	var tfiles []TableFile
 	for i := 0; i < len(values) && rows.Next(); i++ {
 		tfile := TableFile{}
-		err = rows.Scan(&tfile.FileHash, &tfile.FileAddr,
-			&tfile.FileName, &tfile.FileSize)
+		err = rows.Scan(&tfile.FileHash, &tfile.FileAddr, &tfile.FileName, &tfile.FileSize)
 		if err != nil {
 			fmt.Println(err.Error())
 			break
@@ -111,13 +99,9 @@ func GetFileMetaList(limit int) ([]TableFile, error) {
 	return tfiles, nil
 }
 
-// UpdateFileLocation : 更新文件的存储地址(如文件被转移了)
+//  更新文件的存储地址(如文件被转移了)
 func UpdateFileLocation(filehash string, fileaddr string) bool {
-	stmt, err := mydb.DBConn().Prepare(
-		`update tbl_file 
-				set file_addr=? 
-				where file_sha1=? 
-				limit 1`)
+	stmt, err := db_mysql.DBConn().Prepare(`update tbl_file set file_addr=? where file_sha1=? limit 1`)
 	if err != nil {
 		fmt.Println("预编译sql失败, err:" + err.Error())
 		return false

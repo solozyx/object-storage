@@ -5,14 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	cfg "filestore-server/config"
-	dblayer "filestore-server/db"
-	"filestore-server/util"
+	conf "github.com/solozyx/object-storage/config"
+	"github.com/solozyx/object-storage/db"
+	"github.com/solozyx/object-storage/util"
 )
 
-
-
-// SignupHandler : 处理用户注册请求
+// 处理用户注册请求
 func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	// GET
 	if r.Method == http.MethodGet {
@@ -32,23 +30,23 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	// POST
 	r.ParseForm()
 	username := r.Form.Get("username")
-	passwd := r.Form.Get("password")
-	if len(username) < 3 || len(passwd) < 5 {
+	passWd := r.Form.Get("password")
+	if len(username) < 3 || len(passWd) < 5 {
 		w.Write([]byte("Invalid parameter"))
 		return
 	}
 	// 对密码进行加盐 取Sha1值加密
-	encPasswd := util.Sha1([]byte(passwd + cfg.UserSignupSalt))
+	encryptPassWd := util.Sha1([]byte(passWd + conf.UserSignupSalt))
 	// 将用户注册信息写入用户表
-	suc := dblayer.UserSignup(username, encPasswd)
-	if suc {
+	ok := db.UserSignUp(username, encryptPassWd)
+	if ok {
 		w.Write([]byte("SUCCESS"))
 	} else {
 		w.Write([]byte("FAILED"))
 	}
 }
 
-// SignInHandler : 登录接口
+// 登录接口
 func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// data, err := ioutil.ReadFile("./static/view/signin.html")
@@ -64,19 +62,19 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
-	encPasswd := util.Sha1([]byte(password + cfg.UserSignupSalt))
+	encryptPassWd := util.Sha1([]byte(password + conf.UserSignupSalt))
 
 	// 1. 校验用户名及密码
-	pwdChecked := dblayer.UserSignin(username, encPasswd)
+	pwdChecked := db.UserSignIn(username, encryptPassWd)
 	if !pwdChecked {
 		w.Write([]byte("FAILED"))
 		return
 	}
 
 	// 2. 生成访问凭证(token)下发给客户端
-	token := GenToken(username)
+	token := genToken(username)
 	// token写入MySQL数据库
-	upRes := dblayer.UpdateToken(username, token)
+	upRes := db.UpdateToken(username, token)
 	if !upRes {
 		w.Write([]byte("FAILED"))
 		return
@@ -93,7 +91,7 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 			Location string
 			Username string
 			// 访问凭证
-			Token    string
+			Token string
 		}{
 			Location: "http://" + r.Host + "./static/view/home.html",
 			Username: username,
@@ -111,15 +109,15 @@ func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 验证token放到http请求拦截器
 	// 2. 验证token是否有效
-	//token := r.Form.Get("token")
-	//isValidToken := IsTokenValid(token)
-	//if !isValidToken {
-	//	w.WriteHeader(http.StatusForbidden)
-	//	return
-	//}
+	token := r.Form.Get("token")
+	ok := IsTokenValid(token)
+	if !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 
 	// 3. 查询用户信息
-	user, err := dblayer.GetUserInfo(username)
+	user, err := db.GetUserInfo(username)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -134,8 +132,8 @@ func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.JSONBytes())
 }
 
-// GenToken : 生成token,规则自定义,这里生成 40字符长度的token
-func GenToken(username string) string {
+// 生成token,规则自定义,这里生成 40字符长度的token
+func genToken(username string) string {
 	// MD5 字符串长度是 32位 + 当前时间戳的前8位
 	// 40位字符 : md5(username + timestamp + token_salt) + timestamp[:8]
 	// 当前时间戳
@@ -146,7 +144,7 @@ func GenToken(username string) string {
 	return tokenPrefix + ts[:8]
 }
 
-// IsTokenValid : token是否有效
+// token是否有效
 func IsTokenValid(token string) bool {
 	if len(token) != 40 {
 		return false

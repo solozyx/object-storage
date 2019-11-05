@@ -3,9 +3,9 @@ package mq
 import (
 	"log"
 
-	conf "filestore-server/config"
-
 	"github.com/streadway/amqp"
+
+	conf "github.com/solozyx/object-storage/config"
 )
 
 var (

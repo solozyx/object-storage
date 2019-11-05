@@ -11,26 +11,25 @@ import (
 	"strings"
 	"time"
 
-	cmn "filestore-server/common"
-	conf "filestore-server/config"
-	dblayer "filestore-server/db"
-	"filestore-server/meta"
-	"filestore-server/mq"
-	"filestore-server/store/ceph"
-	"filestore-server/store/oss"
-	"filestore-server/util"
+	comm "github.com/solozyx/object-storage/common"
+	conf "github.com/solozyx/object-storage/config"
+	"github.com/solozyx/object-storage/db"
+	"github.com/solozyx/object-storage/meta"
+	"github.com/solozyx/object-storage/mq"
+	"github.com/solozyx/object-storage/store/ceph"
+	"github.com/solozyx/object-storage/store/oss"
+	"github.com/solozyx/object-storage/util"
 )
 
 const (
 	CephKeyPrefix = "/ceph/"
-	CephBucket = "userfile"
+	CephBucket    = "userfile"
 
 	// 注意:OSS上传文件不能以 / 开头 如 不能用 /oss/
 	OSSKeyPrefix = "oss/"
 )
 
-
-// UploadHandler : 处理文件上传
+// 处理文件上传
 // param w 向用户返回数据的RW对象
 // param r 接收用户请求Request对象指针
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +37,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// 返回上传html页面
 		data, err := ioutil.ReadFile("./static/view/index.html")
 		if err != nil {
-			io.WriteString(w, "internel server error")
+			io.WriteString(w, "internal server error")
 			return
 		}
 		io.WriteString(w, string(data))
@@ -57,7 +56,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// 函数退出前关闭文件句柄
 		defer file.Close()
-		
+
 		fileMeta := meta.FileMeta{
 			FileName: head.Filename,
 			// TODO : ERROR 不同用户同时上传相同文件名的文件,导致冲突
@@ -90,7 +89,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// 游标重新回到文件头部
 		newFile.Seek(0, 0)
 
-		if conf.CurrentStoreType == cmn.StoreCeph {
+		if conf.CurrentStoreType == comm.StoreCeph {
 			// 文件写入Ceph存储
 			data, _ := ioutil.ReadAll(newFile)
 			// 文件sha1保证用户上传文件存储在ceph的key的唯一性
@@ -98,7 +97,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 			_ = ceph.PutObject(CephBucket, cephPath, data)
 			// 更新文件路径,从本地存储路径 迁移为 Ceph云存储路径
 			fileMeta.Location = cephPath
-		} else if conf.CurrentStoreType == cmn.StoreOSS {
+		} else if conf.CurrentStoreType == comm.StoreOSS {
 			// 文件写入OSS存储
 			ossPath := OSSKeyPrefix + fileMeta.FileSha1
 			// 判断写入OSS为同步还是异步
@@ -116,11 +115,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 					FileHash:      fileMeta.FileSha1,
 					CurLocation:   fileMeta.Location,
 					DestLocation:  ossPath,
-					DestStoreType: cmn.StoreOSS,
+					DestStoreType: comm.StoreOSS,
 				}
 				publishData, _ := json.Marshal(data)
-				publishSucc := mq.Publish(conf.TransExchangeName,conf.TransOSSRoutingKey,publishData)
-				if !publishSucc {
+				publishOk := mq.Publish(conf.TransExchangeName, conf.TransOSSRoutingKey, publishData)
+				if !publishOk {
 					// TODO : 当前发送转移信息失败 稍后重试
 				}
 			}
@@ -132,9 +131,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// 更新用户文件表记录
 		r.ParseForm()
 		username := r.Form.Get("username")
-		suc := dblayer.OnUserFileUploadFinished(username, fileMeta.FileSha1,
-			fileMeta.FileName, fileMeta.FileSize)
-		if suc {
+		ok := db.OnUserFileUploadFinished(username, fileMeta.FileSha1, fileMeta.FileName, fileMeta.FileSize)
+		if ok {
 			http.Redirect(w, r, "./static/view/home.html", http.StatusFound)
 		} else {
 			w.Write([]byte("Upload Failed."))
@@ -142,19 +140,19 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UploadSucHandler : 上传已完成
+// 上传已完成
 func UploadSucHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Upload finished!")
 }
 
-// GetFileMetaHandler : 获取文件元信息
+// 获取文件元信息
 func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
 	// 解析浏览器表单参数
 	r.ParseForm()
 
-	filehash := r.Form["filehash"][0]
+	fileHash := r.Form["filehash"][0]
 	// fMeta := meta.GetFileMeta(filehash)
-	fMeta, err := meta.GetFileMetaDB(filehash)
+	fMeta, err := meta.GetFileMetaDB(fileHash)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -172,13 +170,13 @@ func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// FileQueryHandler : 查询批量的文件元信息
+// 批量查询用户上传文件元信息
 func FileQueryHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	limitCnt, _ := strconv.Atoi(r.Form.Get("limit"))
+	limitCount, _ := strconv.Atoi(r.Form.Get("limit"))
 	username := r.Form.Get("username")
 	// fileMetas, _ := meta.GetLastFileMetasDB(limitCnt)
-	userFiles, err := dblayer.QueryUserFileMetas(username, limitCnt)
+	userFiles, err := db.QueryUserFileMetas(username, limitCount)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -213,11 +211,11 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	// 返回客户端 设置http响应头 让浏览器能识别
 	w.Header().Set("Content-Type", "application/octect-stream")
 	// attachment表示文件将会提示下载到本地，而不是直接在浏览器中打开
-	w.Header().Set("content-disposition", "attachment; filename=\"" 	+ fm.FileName + "\"")
+	w.Header().Set("content-disposition", "attachment; filename=\""+fm.FileName+"\"")
 	w.Write(data)
 }
 
-// FileMetaUpdateHandler : 更新文件元信息接口(这里只实现重命名文件名)
+// 更新文件元信息接口(这里只实现重命名文件名)
 func FileMetaUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	opType := r.Form.Get("op")
@@ -250,7 +248,7 @@ func FileMetaUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO : NOTICE 物理删除可能失败,认为删除了meta信息就是删除了文件
-// FileDeleteHandler : 删除文件元信息
+// 删除文件元信息
 func FileDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fileSha1 := r.Form.Get("filehash")
@@ -259,11 +257,11 @@ func FileDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	os.Remove(fMeta.Location)
 	// 删除文件元信息
 	meta.RemoveFileMeta(fileSha1)
-	// TODO: 删除表文件信息
+	// TODO: 删除 文件表 用户文件表 相关数据
 	w.WriteHeader(http.StatusOK)
 }
 
-// TryFastUploadHandler : 尝试秒传接口
+// 尝试秒传接口
 func TryFastUploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. 解析请求参数
 	r.ParseForm()
@@ -291,8 +289,8 @@ func TryFastUploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. 上传过则将文件信息写入用户文件表， 返回成功
-	suc := dblayer.OnUserFileUploadFinished(username, filehash, filename, int64(filesize))
-	if suc {
+	ok := db.OnUserFileUploadFinished(username, filehash, filename, int64(filesize))
+	if ok {
 		resp := util.RespMsg{
 			Code: 0,
 			Msg:  "秒传成功",
@@ -316,14 +314,13 @@ func DownloadURLHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	filehash := r.Form.Get("filehash")
 	// 从文件表查找记录
-	row, _ := dblayer.GetFileMeta(filehash)
+	row, _ := db.GetFileMeta(filehash)
 
 	// TODO: 判断文件存在OSS 还是Ceph 还是在本地
 	if strings.HasPrefix(row.FileAddr.String, "/tmp") {
 		username := r.Form.Get("username")
 		token := r.Form.Get("token")
-		tmpUrl := fmt.Sprintf("http://%s/file/download?filehash=%s&username=%s&token=%s",
-			r.Host, filehash, username, token)
+		tmpUrl := fmt.Sprintf("http://%s/file/download?filehash=%s&username=%s&token=%s", r.Host, filehash, username, token)
 		w.Write([]byte(tmpUrl))
 	} else if strings.HasPrefix(row.FileAddr.String, "/ceph") {
 		// TODO: ceph下载url

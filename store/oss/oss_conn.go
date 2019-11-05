@@ -5,7 +5,7 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 
-	conf "filestore-server/config"
+	conf "github.com/solozyx/object-storage/config"
 )
 
 var ossCli *oss.Client
@@ -15,7 +15,7 @@ func Client() *oss.Client {
 	if ossCli != nil {
 		return ossCli
 	}
-	ossCli, err := oss.New(conf.OSSEndpoint,conf.OSSAccesskeyID, conf.OSSAccessKeySecret)
+	ossCli, err := oss.New(conf.OSSEndpoint, conf.OSSAccesskeyID, conf.OSSAccessKeySecret)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil
