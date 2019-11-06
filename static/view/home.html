@@ -80,7 +80,7 @@
       success: function (body, textStatus, jqXHR) {
         var resp = JSON.parse(body);
         document.getElementById("username").innerHTML = resp.data.Username;
-        document.getElementById("regtime").innerHTML = resp.data.SignupAt;
+        document.getElementById("regtime").innerHTML = resp.data.SignUpAt;
         updateFileList();
       }
     });
@@ -130,7 +130,7 @@
           cell.innerHTML = '<button class="btn btn-success" ' +
             'style="height:30px;margin:5px 0;"' +
             'onClick = "downloadFile(\'http://localhost:8080/file/' +
-            'downloadurl?filehash=' + data[i].FileHash + '&' + queryParams() + '\')">下载</button>';
+            'download_url?filehash=' + data[i].FileHash + '&' + queryParams() + '\')">下载</button>';
         }
       }
     });

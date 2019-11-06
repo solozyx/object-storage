@@ -133,7 +133,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		ok := db.OnUserFileUploadFinished(username, fileMeta.FileSha1, fileMeta.FileName, fileMeta.FileSize)
 		if ok {
-			http.Redirect(w, r, "./static/view/home.html", http.StatusFound)
+			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
 		} else {
 			w.Write([]byte("Upload Failed."))
 		}
@@ -317,14 +317,14 @@ func DownloadURLHandler(w http.ResponseWriter, r *http.Request) {
 	row, _ := db.GetFileMeta(filehash)
 
 	// TODO: 判断文件存在OSS 还是Ceph 还是在本地
-	if strings.HasPrefix(row.FileAddr.String, "/tmp") {
+	if strings.HasPrefix(row.FileAddr.String, conf.FileLocalStorePath) {
 		username := r.Form.Get("username")
 		token := r.Form.Get("token")
 		tmpUrl := fmt.Sprintf("http://%s/file/download?filehash=%s&username=%s&token=%s", r.Host, filehash, username, token)
 		w.Write([]byte(tmpUrl))
-	} else if strings.HasPrefix(row.FileAddr.String, "/ceph") {
+	} else if strings.HasPrefix(row.FileAddr.String, conf.FileCephStorePath) {
 		// TODO: ceph下载url
-	} else if strings.HasPrefix(row.FileAddr.String, "oss/") {
+	} else if strings.HasPrefix(row.FileAddr.String, conf.FileOSSStorePath) {
 		// oss下载url
 		signedURL := oss.DownloadURL(row.FileAddr.String)
 		w.Write([]byte(signedURL))

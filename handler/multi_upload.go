@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	MPKeyPrefix      = "MP_"
+	MPKeyPrefix      = conf.RdsCacheKeyPrefix + "MP_"
 	ChunkCount       = "chunk_count"
 	FileHash         = "file_hash"
 	FileSize         = "file_size"

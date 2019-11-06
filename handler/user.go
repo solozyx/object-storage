@@ -11,7 +11,7 @@ import (
 )
 
 // 处理用户注册请求
-func SignupHandler(w http.ResponseWriter, r *http.Request) {
+func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	// GET
 	if r.Method == http.MethodGet {
 		// 用户注册页面
@@ -93,7 +93,7 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 			// 访问凭证
 			Token string
 		}{
-			Location: "http://" + r.Host + "./static/view/home.html",
+			Location: "http://" + r.Host + "/static/view/home.html",
 			Username: username,
 			Token:    token,
 		},

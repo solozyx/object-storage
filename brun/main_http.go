@@ -11,11 +11,11 @@ import (
 func main() {
 	// 静态资源处理
 	// http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(assets.AssetFS())))
-	http.Handle("/static/",	http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	// 用户相关接口
 	http.HandleFunc("/", handler.SignInHandler)
-	http.HandleFunc("/user/sign_up", handler.SignupHandler)
+	http.HandleFunc("/user/sign_up", handler.SignUpHandler)
 	http.HandleFunc("/user/sign_in", handler.SignInHandler)
 
 	// 以下是需要中间件校验token的接口
@@ -36,9 +36,9 @@ func main() {
 	// 上传文件 云存储 下载接口
 	http.HandleFunc("/file/download_url", handler.HTTPInterceptor(handler.DownloadURLHandler))
 	// 分块上传接口
-	http.HandleFunc("/file/mp_upload/init",handler.HTTPInterceptor(handler.InitialMultipartUploadHandler))
-	http.HandleFunc("/file/mp_upload/upload_part",handler.HTTPInterceptor(handler.UploadPartHandler))
-	http.HandleFunc("/file/mp_upload/complete",handler.HTTPInterceptor(handler.CompleteUploadHandler))
+	http.HandleFunc("/file/mp_upload/init", handler.HTTPInterceptor(handler.InitialMultipartUploadHandler))
+	http.HandleFunc("/file/mp_upload/upload_part", handler.HTTPInterceptor(handler.UploadPartHandler))
+	http.HandleFunc("/file/mp_upload/complete", handler.HTTPInterceptor(handler.CompleteUploadHandler))
 	// http.HandleFunc("/file/mp_upload/cancel"
 	// http.HandleFunc("/file/mp_upload/status"
 

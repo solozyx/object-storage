@@ -23,7 +23,7 @@ func HTTPInterceptor(h http.HandlerFunc) http.HandlerFunc {
 			if len(username) < 3 || !isTokenValid(token) {
 				// w.WriteHeader(http.StatusForbidden)
 				// token校验失败则跳转到登录页面
-				http.Redirect(w, r, "./static/view/signin.html", http.StatusFound)
+				http.Redirect(w, r, "/static/view/signin.html", http.StatusFound)
 				return
 			}
 			// token验证通过

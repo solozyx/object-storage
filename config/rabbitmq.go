@@ -5,15 +5,15 @@ const (
 	AsyncTransferEnable = true
 
 	// rabbitmq 服务入口url
-	RabbitURL = "amqp://guest:guest@127.0.0.1:5672/"
+	RabbitURL = "amqp://root:root@192.168.174.134:5672/object_storage"
 
 	// 交换机 Exchange
-	TransExchangeName = "uploadserver.trans"
+	TransExchangeName = "exchange.object_storage.trans"
 	// 队列 Queue
-	TransOSSQueueName = "uploadserver.trans.oss"
+	TransOSSQueueName = "exchange.object_storage.trans.oss"
 	// 路由键 RoutingKey
 	TransOSSRoutingKey = "oss"
 
 	//  oss转移失败后写入另一个队列
-	TransOSSErrQueueName = "uploadserver.trans.oss.err"
+	TransOSSErrQueueName = "exchange.object_storage.trans.oss.err"
 )

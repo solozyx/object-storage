@@ -9,7 +9,7 @@ import (
 
 var (
 	pool      *redis.Pool
-	redisHost = "127.0.0.1:6379"
+	redisHost = "192.168.174.134:6379"
 	redisPass = "" // 开启Redis验证可以设置登录密码 testupload
 )
 
@@ -17,9 +17,9 @@ var (
 func newRedisPool() *redis.Pool {
 	return &redis.Pool{
 		// 连接池最多有多少个可用连接
-		MaxIdle:     50,
+		MaxIdle: 50,
 		// 同时能够使用的连接数 0表示无限制 <= MaxIdle
-		MaxActive:   30,
+		MaxActive: 30,
 		// 1个连接超过 IdleTimeout 都没有使用则回收该连接
 		IdleTimeout: 300 * time.Second,
 		// 创建配置1个连接 返回1个连接对象
